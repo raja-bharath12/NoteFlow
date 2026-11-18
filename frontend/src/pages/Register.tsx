@@ -72,11 +72,23 @@ export default function Register() {
 
     setIsLoading(true)
     try {
-      await register(name, email, password)
-      toast.success('Account created successfully!')
+      await register(email, name, password)
+      toast.success('Account created! Welcome to NoteFlow 🎉')
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create account')
+      // Map Firebase error codes to friendly messages
+      const code = err?.code || ''
+      if (code === 'auth/email-already-in-use') {
+        toast.error('An account with this email already exists. Try signing in.')
+      } else if (code === 'auth/invalid-email') {
+        toast.error('Invalid email address.')
+      } else if (code === 'auth/weak-password') {
+        toast.error('Password is too weak. Use at least 6 characters.')
+      } else if (code === 'auth/network-request-failed') {
+        toast.error('Network error. Check your internet connection.')
+      } else {
+        toast.error(err.message || 'Failed to create account')
+      }
     } finally {
       setIsLoading(false)
     }

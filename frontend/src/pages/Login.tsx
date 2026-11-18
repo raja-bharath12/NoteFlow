@@ -22,13 +22,23 @@ export default function Login() {
     try {
       await login(email, password)
       navigate(from, { replace: true })
-      toast.success('Welcome back!')
+      toast.success('Welcome back! 👋')
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Invalid credentials')
+      const code = err?.code || ''
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        toast.error('Invalid email or password.')
+      } else if (code === 'auth/too-many-requests') {
+        toast.error('Too many attempts. Please wait a moment and try again.')
+      } else if (code === 'auth/network-request-failed') {
+        toast.error('Network error. Check your internet connection.')
+      } else {
+        toast.error(err.message || 'Failed to sign in')
+      }
     } finally {
       setIsLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-slate-950">
