@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm install --prefix frontend --legacy-peer-deps && npx --prefix frontend vite build",
+  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "echo 'skipping root install'",
+  "installCommand": "echo 'deps handled in buildCommand'",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
