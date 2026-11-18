@@ -1,0 +1,43 @@
+# NoteFlow — .gitignore
+
+# ─── Environment & Secrets ─────────────────────────────────────────────────
+.env
+.env.*
+*.env
+!.env.example
+
+# ─── Backend (Java/Maven) ──────────────────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/**/*.class
+backend/**/*.jar
+!backend/target/noteflow-backend-*.jar
+
+# ─── Frontend (Node) ───────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/coverage/
+
+# ─── IDE / OS ──────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+*.swp
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ──────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Database ──────────────────────────────────────────────────────────────
+*.sql.bak
+
+# ─── Application secrets ───────────────────────────────────────────────────
+backend/src/main/resources/application-prod.yml
+backend/src/main/resources/application-local.yml

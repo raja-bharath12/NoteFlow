@@ -1,0 +1,18 @@
+package com.noteflow.repository;
+
+import com.noteflow.entity.DocumentVersion;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Long> {
+
+    List<DocumentVersion> findByDocumentIdOrderByVersionNumberDesc(Long documentId);
+
+    Optional<DocumentVersion> findTopByDocumentIdOrderByVersionNumberDesc(Long documentId);
+
+    long countByDocumentId(Long documentId);
+}

@@ -1,0 +1,146 @@
+// Firebase Firestore Security Rules for NoteFlow
+// Deploy with: firebase deploy --only firestore:rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(resource) {
+      return request.auth.uid == resource.data.ownerId;
+    }
+
+    function isDocumentOwner(documentId) {
+      return get(/databases/$(database)/documents/documents/$(documentId)).data.ownerId == request.auth.uid;
+    }
+
+    function hasDocumentPermission(documentId) {
+      return exists(/databases/$(database)/documents/documentPermissions/$(documentId + '_' + request.auth.uid));
+    }
+
+    function hasFolderPermission(folderId) {
+      return exists(/databases/$(database)/documents/folderPermissions/$(folderId + '_' + request.auth.uid));
+    }
+
+    function isValidPermission(perm) {
+      return perm in ['VIEWER', 'COMMENTER', 'EDITOR'];
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if request.auth.uid == uid;
+      allow update: if request.auth.uid == uid;
+      allow delete: if request.auth.uid == uid;
+    }
+
+    // ─── Folders ─────────────────────────────────────────────────────────────
+    match /folders/{folderId} {
+      allow read: if isSignedIn() && (
+        isOwner(resource) || hasFolderPermission(folderId)
+      );
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isOwner(resource) ||
+        get(/databases/$(database)/documents/folderPermissions/$(folderId + '_' + request.auth.uid)).data.permission == 'EDITOR'
+      );
+      allow delete: if isSignedIn() && isOwner(resource);
+    }
+
+    // ─── Documents ───────────────────────────────────────────────────────────
+    match /documents/{documentId} {
+      allow read: if isSignedIn() && (
+        isOwner(resource) || hasDocumentPermission(documentId)
+      );
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isOwner(resource) ||
+        get(/databases/$(database)/documents/documentPermissions/$(documentId + '_' + request.auth.uid)).data.permission in ['EDITOR', 'COMMENTER']
+      );
+      allow delete: if isSignedIn() && isOwner(resource);
+
+      // Document versions (sub-collection)
+      match /versions/{versionId} {
+        allow read: if isSignedIn() && (
+          isDocumentOwner(documentId) || hasDocumentPermission(documentId)
+        );
+        allow create: if isSignedIn() && (
+          isDocumentOwner(documentId) ||
+          get(/databases/$(database)/documents/documentPermissions/$(documentId + '_' + request.auth.uid)).data.permission == 'EDITOR'
+        );
+        allow update, delete: if isSignedIn() && isDocumentOwner(documentId);
+      }
+
+      // Comments (sub-collection)
+      match /comments/{commentId} {
+        allow read: if isSignedIn() && (
+          isDocumentOwner(documentId) || hasDocumentPermission(documentId)
+        );
+        allow create: if isSignedIn() && (
+          isDocumentOwner(documentId) ||
+          get(/databases/$(database)/documents/documentPermissions/$(documentId + '_' + request.auth.uid)).data.permission in ['EDITOR', 'COMMENTER']
+        ) && request.resource.data.authorId == request.auth.uid;
+        allow update: if isSignedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          isDocumentOwner(documentId)
+        );
+        allow delete: if isSignedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          isDocumentOwner(documentId)
+        );
+      }
+    }
+
+    // ─── Document Permissions ─────────────────────────────────────────────
+    match /documentPermissions/{permId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isDocumentOwner(resource.data.documentId)
+      );
+      allow create, update: if isSignedIn() && isDocumentOwner(request.resource.data.documentId);
+      allow delete: if isSignedIn() && isDocumentOwner(resource.data.documentId);
+    }
+
+    // ─── Folder Permissions ───────────────────────────────────────────────
+    match /folderPermissions/{permId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/folders/$(resource.data.folderId)).data.ownerId == request.auth.uid
+      );
+      allow create, update: if isSignedIn() &&
+        get(/databases/$(database)/documents/folders/$(request.resource.data.folderId)).data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+        get(/databases/$(database)/documents/folders/$(resource.data.folderId)).data.ownerId == request.auth.uid;
+    }
+
+    // ─── Notifications ─────────────────────────────────────────────────────
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow create: if isSignedIn();
+    }
+
+    // ─── Activity Logs ─────────────────────────────────────────────────────
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Immutable logs
+    }
+
+    // ─── Invitations ───────────────────────────────────────────────────────
+    match /invitations/{invitationId} {
+      allow read: if isSignedIn() && (
+        resource.data.inviterId == request.auth.uid ||
+        resource.data.inviteeEmail == request.auth.token.email
+      );
+      allow create: if isSignedIn() && request.resource.data.inviterId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.inviterId == request.auth.uid ||
+        resource.data.inviteeEmail == request.auth.token.email
+      );
+      allow delete: if isSignedIn() && resource.data.inviterId == request.auth.uid;
+    }
+  }
+}
