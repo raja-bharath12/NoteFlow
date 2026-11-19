@@ -152,8 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, username: string, password: string) => {
     const fbUser = await firebaseRegister(email, password, username)
-    await createUserProfile(fbUser.uid, { email, username })
+    // Write Firestore profile but don't block registration on it
+    createUserProfile(fbUser.uid, { email, username }).catch(() => {})
   }
+
 
   const logout = async () => {
     await firebaseSignOut()

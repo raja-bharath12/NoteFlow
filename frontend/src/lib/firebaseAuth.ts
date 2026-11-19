@@ -50,7 +50,8 @@ export async function firebaseRegister(
 ): Promise<FirebaseUser> {
   const credential = await createUserWithEmailAndPassword(auth, email, password)
   await updateProfile(credential.user, { displayName })
-  await sendEmailVerification(credential.user)
+  // Send verification email but don't block registration if it fails
+  sendEmailVerification(credential.user).catch(() => {})
   return credential.user
 }
 
