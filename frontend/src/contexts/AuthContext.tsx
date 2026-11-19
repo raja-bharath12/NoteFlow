@@ -150,11 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseGoogleSignIn()
   }
 
-  const register = async (email: string, username: string, password: string) => {
+  const register = async (emailOrName: string, usernameOrEmail: string, password: string) => {
+    // Guard: detect if args were accidentally swapped (old code bug)
+    // If first arg has no '@', it's a name not an email — swap them
+    const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
+    const email    = isEmail(emailOrName) ? emailOrName    : usernameOrEmail
+    const username = isEmail(emailOrName) ? usernameOrEmail : emailOrName
     const fbUser = await firebaseRegister(email, password, username)
     // Write Firestore profile but don't block registration on it
     createUserProfile(fbUser.uid, { email, username }).catch(() => {})
   }
+
 
 
   const logout = async () => {
