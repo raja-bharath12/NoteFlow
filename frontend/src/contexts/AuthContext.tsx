@@ -143,7 +143,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ─── Auth actions ──────────────────────────────────────────────────────────
   const login = async (email: string, password: string) => {
     await firebaseLogin(email, password)
-    // onAuthStateChanged will update state
+    // Wait for onAuthStateChanged to fire so user state is set
+    // before the caller navigates to a protected route
+    await new Promise<void>((resolve) => {
+      const unsub = onAuthStateChanged(auth, (fbUser) => {
+        if (fbUser) {
+          unsub()
+          resolve()
+        }
+      })
+      // Safety timeout in case onAuthStateChanged never fires
+      setTimeout(() => { unsub(); resolve() }, 5000)
+    })
   }
 
   const loginWithGoogle = async () => {
